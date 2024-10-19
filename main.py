@@ -21,7 +21,7 @@ WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 WEBAPP_HOST = '0.0.0.0'
 WEBAPP_PORT = 8000
 
-# Параметры базы данных
+
 DB_USER = os.getenv("POSTGRES_USER")
 DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 DB_HOST = os.getenv("POSTGRES_HOST")
@@ -35,15 +35,15 @@ dp = Dispatcher()
 
 router = Router()
 
-from models import Employer, Employee  # Подключаем модели из вашего файла
+from models import Employer, Employee
 
-# Инициализация базы данных
+
 async def init_db():
     await Tortoise.init(
         db_url=DATABASE_URL,
-        modules={'models': ['models']}  # Указываем, где находятся ваши модели
+        modules={'models': ['models']}
     )
-    # Если необходимо создать таблицы
+
     await Tortoise.generate_schemas()
 
 @router.message(CommandStart())
@@ -63,11 +63,9 @@ async def callback_handler(callback: CallbackQuery) -> None:
     username = callback.from_user.username
 
     if callback.data == "job_seeker":
-        # Сохраняем пользователя как соискателя
         await Employee.get_or_create(tg_id=user_id, tg_username=username)
         await callback.message.answer("Вы выбрали: Я ищу работу.")
     elif callback.data == "employer":
-        # Сохраняем пользователя как работодателя
         await Employer.get_or_create(tg_id=user_id, tg_username=username)
         await callback.message.answer("Вы выбрали: Я работодатель.")
 
@@ -82,7 +80,7 @@ async def echo_handler(message: Message) -> None:
 
 dp.include_router(router)
 
-# Используем lifespan для управления подключением к базе данных
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
