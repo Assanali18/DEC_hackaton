@@ -18,7 +18,9 @@ load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-WEBHOOK_HOST = 'https://dechackaton-production.up.railway.app/'
+print(TOKEN)
+
+WEBHOOK_HOST = 'https://dechackaton-production.up.railway.app'
 WEBHOOK_PATH = '/webhook/' + TOKEN
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
