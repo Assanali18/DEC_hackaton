@@ -1,6 +1,7 @@
 import logging
 import sys
-from os import getenv
+import os
+
 
 from aiohttp import web
 
@@ -11,9 +12,11 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from dotenv import load_dotenv
 
+load_dotenv()
 
-TOKEN = getenv("BOT_TOKEN")
+TOKEN = os.getenv("BOT_TOKEN")
 
 WEBHOOK_HOST = 'https://your-server.com'
 WEBHOOK_PATH = '/webhook/' + TOKEN
@@ -21,7 +24,7 @@ WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
 
 WEB_SERVER_HOST = 'localhost'
-WEB_SERVER_PORT = 3001
+WEB_SERVER_PORT = 8080
 
 router = Router()
 
