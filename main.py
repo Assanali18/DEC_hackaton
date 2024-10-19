@@ -1,28 +1,29 @@
 import logging
-import sys
 import os
-from aiohttp import web
+from fastapi import FastAPI, Request
 from aiogram import Bot, Dispatcher, Router, types
-from aiogram.client.default import DefaultBotProperties
+
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from aiogram.utils.markdown import hbold
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-# Настройки вебхука
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")  # Ваш домен или IP-адрес с HTTPS
-WEBHOOK_PATH = '/webhook'  # Путь для вебхука
+WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
+WEBHOOK_PATH = '/webhook'
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
-# Настройки веб-сервера
-WEBAPP_HOST = '0.0.0.0'  # Хост для веб-приложения
-WEBAPP_PORT = 8000       # Порт для веб-приложения
+WEBAPP_HOST = '0.0.0.0'
+WEBAPP_PORT = 8000
+
+# Инициализируем бота и диспетчер
+bot = Bot(token=TOKEN, parse_mode=ParseMode.HTML)
+dp = Dispatcher()
 
 # Инициализируем роутер
 router = Router()
@@ -51,36 +52,53 @@ async def echo_handler(message: Message) -> None:
     except TypeError:
         await message.answer("Nice try!")
 
-async def on_startup(bot: Bot) -> None:
-    # Устанавливаем вебхук при запуске
+# Включаем роутер в диспетчер
+dp.include_router(router)
+
+# Инициализируем FastAPI приложение
+app = FastAPI()
+
+# Обработчик вебхуков от Telegram
+@app.post(WEBHOOK_PATH)
+async def telegram_webhook(update: dict):
+    telegram_update = types.Update(**update)
+    await dp.feed_update(bot, telegram_update)
+    return {"ok": True}
+
+# Функция запуска
+async def on_startup():
     await bot.set_webhook(WEBHOOK_URL)
+    logging.info("Webhook установлен.")
 
-async def on_shutdown(bot: Bot) -> None:
-    # Удаляем вебхук при завершении работы
+# Функция остановки
+async def on_shutdown():
     await bot.delete_webhook()
+    await bot.session.close()
+    logging.info("Webhook удален.")
 
-def main() -> None:
-    dp = Dispatcher()
-    dp.include_router(router)
+# Добавляем события старта и остановки
+app.on_event("startup")(on_startup)
+app.on_event("shutdown")(on_shutdown)
 
-    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+# Добавляем POST-метод для приема внешних запросов
+@app.post("/send_message")
+async def send_message_endpoint(request: Request):
+    data = await request.json()
+    user_id = data.get("user_id")
+    text = data.get("text")
 
-    # Регистрируем функции запуска и завершения
-    dp.startup.register(on_startup)
-    dp.shutdown.register(on_shutdown)
+    if not user_id or not text:
+        return {"status": "error", "message": "Параметры 'user_id' и 'text' обязательны."}
 
-    # Создаем веб-приложение aiohttp
-    app = web.Application()
+    try:
+        await bot.send_message(chat_id=user_id, text=text)
+        return {"status": "success", "message": "Сообщение отправлено."}
+    except Exception as e:
+        logging.error(f"Ошибка при отправке сообщения: {e}")
+        return {"status": "error", "message": "Не удалось отправить сообщение."}
 
-    # Регистрируем обработчик вебхуков
-    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
-
-    # Настраиваем приложение
-    setup_application(app, dp, bot=bot)
-
-    # Запускаем веб-сервер
-    web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT)
-
+# Запускаем приложение
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    main()
+    import uvicorn
+    logging.basicConfig(level=logging.INFO)
+    uvicorn.run(app, host=WEBAPP_HOST, port=WEBAPP_PORT)
