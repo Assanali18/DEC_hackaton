@@ -24,23 +24,23 @@ DB_HOST = os.getenv("POSTGRES_HOST")
 DB_PORT = os.getenv("POSTGRES_PORT", 5432)
 DB_NAME = os.getenv("DB_NAME")
 
-DATABASE_URL = f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# DATABASE_URL = f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
 router = Router()
 
-from models import Employer, Employee, SendMessageRequest
+from models import SendMessageRequest
 
 
-async def init_db():
-    await Tortoise.init(
-        db_url=DATABASE_URL,
-        modules={'models': ['models']}
-    )
-
-    await Tortoise.generate_schemas()
+# async def init_db():
+#     await Tortoise.init(
+#         db_url=DATABASE_URL,
+#         modules={'models': ['models']}
+#     )
+#
+#     await Tortoise.generate_schemas()
 
 @router.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
@@ -53,19 +53,19 @@ async def command_start_handler(message: Message) -> None:
     await message.answer(f"Hello, {hbold(message.from_user.full_name)}!\nКто вы?", reply_markup=keyboard)
 
 
-@router.callback_query(lambda callback: callback.data in ["job_seeker", "employer"])
-async def callback_handler(callback: CallbackQuery) -> None:
-    user_id = callback.from_user.id
-    username = callback.from_user.username
-
-    if callback.data == "job_seeker":
-        await Employee.get_or_create(tg_id=user_id, tg_username=username)
-        await callback.message.answer("Вы выбрали: Я ищу работу.")
-    elif callback.data == "employer":
-        await Employer.get_or_create(tg_id=user_id, tg_username=username)
-        await callback.message.answer("Вы выбрали: Я работодатель.")
-
-    await callback.answer()
+# @router.callback_query(lambda callback: callback.data in ["job_seeker", "employer"])
+# async def callback_handler(callback: CallbackQuery) -> None:
+#     user_id = callback.from_user.id
+#     username = callback.from_user.username
+#
+#     if callback.data == "job_seeker":
+#         await Employee.get_or_create(tg_id=user_id, tg_username=username)
+#         await callback.message.answer("Вы выбрали: Я ищу работу.")
+#     elif callback.data == "employer":
+#         await Employer.get_or_create(tg_id=user_id, tg_username=username)
+#         await callback.message.answer("Вы выбрали: Я работодатель.")
+#
+#     await callback.answer()
 
 @router.message()
 async def echo_handler(message: Message) -> None:
@@ -79,7 +79,7 @@ dp.include_router(router)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    # await init_db()
     logging.info("База данных подключена.")
     await bot.set_webhook(WEBHOOK_URL)
     logging.info("Webhook установлен.")
