@@ -31,7 +31,7 @@ dp = Dispatcher()
 
 router = Router()
 
-from models import Employer, Employee
+from models import Employer, Employee, SendMessageRequest
 
 
 async def init_db():
@@ -97,6 +97,15 @@ async def telegram_webhook(update: dict):
     telegram_update = types.Update(**update)
     await dp.feed_update(bot, telegram_update)
     return {"ok": True}
+
+@app.post("/send_message")
+async def send_message(request: SendMessageRequest):
+    try:
+        await bot.send_message(chat_id=request.chat_id, text=request.text)
+        return {"status": "success", "message": "Message sent successfully"}
+    except Exception as e:
+        logging.error(f"Error sending message: {e}")
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

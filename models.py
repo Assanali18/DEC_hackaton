@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from tortoise import fields
 from tortoise.models import Model
 
@@ -26,3 +27,8 @@ class Employee(Model):
     cv_url = fields.CharField(max_length=300, null=True)
     expected_salary = fields.IntField(null=True)
     city = fields.CharField(max_length=30, null=True)
+
+
+class SendMessageRequest(BaseModel):
+    chat_id: int
+    text: str
