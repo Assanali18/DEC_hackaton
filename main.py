@@ -1,5 +1,7 @@
 import logging
 import os
+
+from aiohttp import ClientSession
 from fastapi import FastAPI, Request
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
@@ -53,19 +55,33 @@ async def command_start_handler(message: Message) -> None:
     await message.answer(f"Hello, {hbold(message.from_user.full_name)}!\nКто вы?", reply_markup=keyboard)
 
 
-# @router.callback_query(lambda callback: callback.data in ["job_seeker", "employer"])
-# async def callback_handler(callback: CallbackQuery) -> None:
-#     user_id = callback.from_user.id
-#     username = callback.from_user.username
-#
-#     if callback.data == "job_seeker":
-#         await Employee.get_or_create(tg_id=user_id, tg_username=username)
-#         await callback.message.answer("Вы выбрали: Я ищу работу.")
-#     elif callback.data == "employer":
-#         await Employer.get_or_create(tg_id=user_id, tg_username=username)
-#         await callback.message.answer("Вы выбрали: Я работодатель.")
-#
-#     await callback.answer()
+@router.callback_query(lambda callback: callback.data in ["job_seeker", "employer"])
+async def callback_handler(callback: CallbackQuery) -> None:
+    user_id = callback.from_user.id
+    username = callback.from_user.username
+    role = "candidate" if callback.data == "job_seeker" else "employer"
+
+    payload = {
+        "username": username or "unknown",  # Обработать случай, если username отсутствует
+        "role": role,
+        "id": str(user_id)
+    }
+
+    async with ClientSession() as session:
+        try:
+            async with session.post(
+                    "https://674b214471933a4e88548354.mockapi.io/api/users/",
+                    json=payload
+            ) as response:
+                if response.status == 201:  # HTTP 201 Created
+                    await callback.message.answer(f"Ваши данные сохранены как: {role}.")
+                else:
+                    error_message = await response.text()
+                    await callback.message.answer(f"Ошибка при сохранении данных: {error_message}")
+        except Exception as e:
+            await callback.message.answer(f"Не удалось отправить данные: {e}")
+
+    await callback.answer()
 
 @router.message()
 async def echo_handler(message: Message) -> None:
