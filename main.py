@@ -92,6 +92,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
 @app.post(WEBHOOK_PATH)
 async def telegram_webhook(update: dict):
     telegram_update = types.Update(**update)
